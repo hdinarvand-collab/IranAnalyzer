@@ -1,9 +1,3 @@
-
-"""
-Technical Analysis
-Version 3.0
-"""
-
 from data.prices import PriceLoader
 
 from indicators.rsi import RSIIndicator
@@ -12,136 +6,71 @@ from indicators.macd import MACDIndicator
 from indicators.adx import ADXIndicator
 from indicators.ichimoku import IchimokuIndicator
 
+from engines.support_engine import SupportEngine
+from engines.volume_engine import VolumeEngine
+from engines.smart_money_engine import SmartMoneyEngine
+from engines.divergence_engine import DivergenceEngine
+from engines.pattern_engine import PatternEngine
+
 from analysis.trend import TrendAnalyzer
 
 
 class TechnicalAnalyzer:
 
     def __init__(self, symbol):
-
         self.symbol = symbol
 
     def run(self):
 
-        # ==========================================
-        # دریافت اطلاعات قیمت
-        # ==========================================
+        # =========================
+        # LOAD DATA
+        # =========================
 
-        loader = PriceLoader(self.symbol)
+        df = PriceLoader(self.symbol).load()
 
-        df = loader.load()
-
-        if df is None or len(df) < 120:
-
-            print("خطا در دریافت اطلاعات قیمت")
-
+        if df is None or len(df) < 50:
+            print("خطا در دریافت اطلاعات")
             return None
 
-        # ==========================================
-        # محاسبه اندیکاتورها
-        # ==========================================
+        # =========================
+        # INDICATORS
+        # =========================
 
         rsi = RSIIndicator(df)
-        df = rsi.calculate()
 
         ema = EMAIndicator(df)
-        df = ema.calculate()
+        ema.calculate()
 
         macd = MACDIndicator(df)
-        df = macd.calculate()
+        macd.calculate()
 
         adx = ADXIndicator(df)
-        df = adx.calculate()
+        adx.calculate()
 
         ichimoku = IchimokuIndicator(df)
-        df = ichimoku.calculate()
+        ichimoku.calculate()
 
-        # ==========================================
-        # داده‌های مورد نیاز Trend Engine
-        # ==========================================
+        # =========================
+        # ENGINE LAYER
+        # =========================
+
+        support = SupportEngine(df).calculate()
+        volume = VolumeEngine(df).calculate()
+        smart_money = SmartMoneyEngine(df).calculate()
+        divergence = DivergenceEngine(df, rsi.series()).calculate()
+        pattern = PatternEngine(df).calculate()
+
+        # =========================
+        # SAFE TECHNICAL DICT
+        # =========================
 
         technical = {
 
-            "ema20": ema.ema20(),
-            "ema50": ema.ema50(),
-
-            "rsi": rsi.last_value(),
-
-            "macd": macd.macd(),
-            "macd_signal": macd.signal_value(),
-
-            "adx": adx.adx(),
-
-            "price_position": ichimoku.price_position(),
-
-            "cloud_color": ichimoku.cloud_color(),
-
-            "future_cloud": ichimoku.future_cloud(),
-
-            "tk_strength": ichimoku.tk_strength(),
-
-            "ichimoku_score": ichimoku.score(),
-            
-
-
-             }
-
-        # ==========================================
-        # اجرای Trend Engine
-        # ==========================================
-
-        trend_engine = TrendAnalyzer(technical)
-
-        trend = trend_engine.analyze()
-
-        # ==========================================
-        # امتیاز اولیه اندیکاتورها
-        # ==========================================
-
-        score = 0
-
-        if ema.signal() == "صعودی":
-            score += 20
-
-        if rsi.signal() == "صعودی":
-            score += 15
-
-        if macd.signal() == "خرید":
-            score += 20
-
-        if adx.signal() == "روند صعودی":
-            score += 15
-
-        score += int(ichimoku.score() * 0.30)
-           
-
-        # اضافه شدن امتیاز Trend Engine
-        score += trend["trend_score"]
-
-        # ==========================================
-        # خروجی
-        # ==========================================
-
-        result = {
-
-            # روند
-            "trend": trend["trend"],
-            "short_trend": trend["short_trend"],
-            "mid_trend": trend["mid_trend"],
-            "long_trend": trend["long_trend"],
-            "trend_strength": trend["trend_strength"],
-            "market_state": trend["market_state"],
-            "trend_score": trend["trend_score"],
-
-            # عمومی
-            "rows": len(df),
-            "last_close": int(df.iloc[-1]["Close"]),
-
             # RSI
-            "rsi": rsi.last_value(),
+            "rsi": rsi.value(),
             "rsi_signal": rsi.signal(),
 
-            # EMA
+            # EMA (FIXED ORDER - NO ERROR)
             "ema20": ema.ema20(),
             "ema50": ema.ema50(),
             "ema_signal": ema.signal(),
@@ -149,61 +78,51 @@ class TechnicalAnalyzer:
             # MACD
             "macd": macd.macd(),
             "macd_signal": macd.signal_value(),
-            "macd_histogram": macd.histogram(),
-            "macd_status": macd.signal(),
+            "macd_histogram": macd.histogram_value(),
+            "macd_status": macd.status(),
 
             # ADX
             "adx": adx.adx(),
-            "plus_di": adx.plus_di(),
-            "minus_di": adx.minus_di(),
             "adx_signal": adx.signal(),
 
-            # Ichimoku
-            "tenkan": ichimoku.tenkan(),
-            "kijun": ichimoku.kijun(),
-            "span_a": ichimoku.span_a(),
-            "span_b": ichimoku.span_b(),
-            "chikou": ichimoku.chikou(),
-
-            "cloud_color": ichimoku.cloud_color(),
-
-            "cloud_thickness": ichimoku.cloud_thickness(),
-
-            "cloud_slope": ichimoku.cloud_slope(),
-
-            "future_cloud": ichimoku.future_cloud(),
-
-            "future_twist": ichimoku.future_twist(),
-
-
-
-
+            # ICHIMOKU
             "price_position": ichimoku.price_position(),
-
-            "distance_to_cloud": ichimoku.distance_to_cloud(),
-
-
-
-            "tk_cross": ichimoku.tk_cross(),
-
-            "tk_strength": ichimoku.tk_strength(),
-
-            "tk_distance": ichimoku.tk_distance(),
-
-            "chikou_status": ichimoku.chikou_status(),
-
-            "trend_continuation": ichimoku.trend_continuation(),
-
-            "reversal_risk": ichimoku.reversal_risk(),
-
-            "ichimoku_score": ichimoku.score(),
-
-            "ichimoku_signal": ichimoku.signal(),
-
-            # امتیاز
-            "score": score
-
+            "cloud_color": ichimoku.cloud_color(),
+            "tk_cross": ichimoku.tk_cross()
         }
 
-        return result
+        # =========================
+        # TREND ANALYSIS (SAFE)
+        # =========================
 
+        trend_engine = TrendAnalyzer(technical)
+        trend = trend_engine.analyze()
+
+        technical.update(trend)
+
+        # =========================
+        # FINAL SCORE
+        # =========================
+
+        final_score = {
+            "final_score": (
+                support["support_score"] +
+                volume["volume_score"] +
+                smart_money["smart_money_score"] +
+                divergence["divergence_score"] +
+                pattern["pattern_score"] +
+                30
+            ),
+            "signal": "خرید"
+        }
+
+        return {
+            "technical": technical,
+            "support": support,
+            "volume": volume,
+            "smart_money": smart_money,
+            "divergence": divergence,
+            "pattern": pattern,
+            "final_score": final_score,
+            "df": df
+        }

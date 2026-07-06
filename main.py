@@ -1,4 +1,3 @@
-from data.prices import PriceLoader
 from analysis.technical import TechnicalAnalyzer
 from reports.excel import ExcelReport
 
@@ -21,31 +20,24 @@ def main():
 
     symbol = input("\nنام نماد را وارد کنید : ")
 
-    print("\nدر حال دریافت اطلاعات ...")
-
     # ======================================
-    # 1) LOAD DATA
+    # 1) TECHNICAL ANALYSIS (شامل دریافت دیتا)
     # ======================================
-    loader = PriceLoader(symbol)
-    df = loader.load()
+    print("\nدر حال دریافت اطلاعات و تحلیل تکنیکال ...")
 
-    if df is None or len(df) == 0:
-        print("❌ خطا در دریافت دیتا")
+    result = TechnicalAnalyzer(symbol).run()
+
+    if result is None:
+        print("❌ خطا در دریافت اطلاعات یا تحلیل تکنیکال")
         return
 
+    df = result["df"]
+
     print("✔ دیتا دریافت شد:", len(df))
-
-    # ======================================
-    # 2) TECHNICAL ANALYSIS
-    # ======================================
-    print("\nدر حال تحلیل تکنیکال ...")
-
-    technical = TechnicalAnalyzer(symbol).run()
-
     print("✔ تحلیل تکنیکال انجام شد")
 
     # ======================================
-    # 3) EXCEL REPORT
+    # 2) EXCEL REPORT
     # ======================================
     print("\nدر حال ساخت Excel ...")
 
@@ -53,13 +45,13 @@ def main():
 
         excel = ExcelReport(
             symbol=symbol,
-            technical=technical,
-            support={},
-            volume={},
-            smart_money={},
-            divergence={},
-            pattern={},
-            final_score=technical,
+            technical=result["technical"],
+            support=result["support"],
+            volume=result["volume"],
+            smart_money=result["smart_money"],
+            divergence=result["divergence"],
+            pattern=result["pattern"],
+            final_score=result["final_score"],
             df=df
         )
 

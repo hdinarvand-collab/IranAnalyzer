@@ -1,0 +1,12 @@
+https://github.com/hdinarvand-collab/IranAnalyzer
+
+
+ 
+
+
+
+cd "D:\تحلیل تک سهم"
+git status
+git add .
+git commit -m "V8.1 Professional Update - Excel + Engines Fix"
+git push origin main

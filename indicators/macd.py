@@ -1,52 +1,40 @@
-"""
-MACD Indicator
-"""
-
-import ta
+import pandas as pd
+from indicators.base import BaseIndicator
 
 
-class MACDIndicator:
+class MACDIndicator(BaseIndicator):
 
     def __init__(self, df):
+        super().__init__(df)
+        self.close = df["Close"]
 
-        self.df = df.copy()
+        self.macd_line, self.signal_line, self.hist = self._calculate()
+
+    def _calculate(self):
+
+        ema12 = self.close.ewm(span=12, adjust=False).mean()
+        ema26 = self.close.ewm(span=26, adjust=False).mean()
+
+        macd = ema12 - ema26
+        signal = macd.ewm(span=9, adjust=False).mean()
+        hist = macd - signal
+
+        return macd, signal, hist
 
     def calculate(self):
-
-        indicator = ta.trend.MACD(
-            close=self.df["Close"],
-            window_fast=12,
-            window_slow=26,
-            window_sign=9
-        )
-
-        self.df["MACD"] = indicator.macd()
-        self.df["MACD_SIGNAL"] = indicator.macd_signal()
-        self.df["MACD_HIST"] = indicator.macd_diff()
-
-        return self.df
+        return self.macd_line
 
     def macd(self):
-
-        return round(self.df.iloc[-1]["MACD"], 2)
+        return self.macd_line.iloc[-1]
 
     def signal_value(self):
+        return self.signal_line.iloc[-1]
 
-        return round(self.df.iloc[-1]["MACD_SIGNAL"], 2)
+    def histogram_value(self):
+        return self.hist.iloc[-1]
 
-    def histogram(self):
+    def status(self):
 
-        return round(self.df.iloc[-1]["MACD_HIST"], 2)
-
-    def signal(self):
-
-        macd = self.df.iloc[-1]["MACD"]
-        signal = self.df.iloc[-1]["MACD_SIGNAL"]
-
-        if macd > signal:
+        if self.hist.iloc[-1] > 0:
             return "خرید"
-
-        elif macd < signal:
-            return "فروش"
-
-        return "خنثی"
+        return "فروش"
